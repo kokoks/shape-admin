@@ -200,7 +200,6 @@ func TestDeleteBackup(t *testing.T) {
 	c.Request.Header.Set("Content-Type", "application/json")
 	h.DeleteBackup(c)
 
-	// Ожидаем ошибку, т.к. файла нет
 	if w.Code != 500 {
 		t.Errorf("Expected 500 for non-existent file, got %d", w.Code)
 	}

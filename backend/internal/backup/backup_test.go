@@ -234,7 +234,7 @@ func TestRestoreBackupWithNilDB(t *testing.T) {
 	logger := &mockLogger{}
 	be := NewBackupEngine(sm, logger)
 
-	// Создаём минимальный валидный gzip-файл
+	// минимальный валидный gzip-файл
 	archivePath := filepath.Join(tmpDir, "test.tar.gz")
 	f, _ := os.Create(archivePath)
 	f.Write([]byte{0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03})
