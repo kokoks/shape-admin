@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shape Admin</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .backup-btn { background: #4CAF50; color: white; border: none; }
+        .restore-btn { background: #2196F3; color: white; border: none; }
+        .delete-btn { background: #f44336; color: white; border: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Административная панель - Управление цветами и фигурами</h1>
+        
+        <div class="section">
+            <h2>Бэкапы</h2>
+            <select id="storageSelect">
+                <option value="">Хранилище по умолчанию</option>
+            </select>
+            <button class="backup-btn" onclick="createBackup()">Создать бэкап</button>
+            <button onclick="loadStorages()">Обновить хранилища</button>
+            <h3>Список бэкапов:</h3>
+            <ul id="backupList"></ul>
+        </div>
+
+        <div class="section">
+            <h2>Управление хранилищами</h2>
+            <input type="text" id="newStorageName" placeholder="Имя хранилища">
+            <input type="text" id="newStoragePath" placeholder="Путь (например, /app/backups/manual)">
+            <button onclick="addStorage()">Добавить хранилище</button>
+        </div>
+
+        <div class="section">
+            <h2>Цвета</h2>
+            <form id="colorForm">
+                <input type="text" name="name" placeholder="Название" required>
+                <input type="text" name="hex" placeholder="#FF0000" required>
+                <button type="submit">Добавить цвет</button>
+            </form>
+            <table id="colorsTable">
+                <tr><th>ID</th><th>Название</th><th>HEX</th><th>Фигуры</th></tr>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>Фигуры</h2>
+            <form id="shapeForm">
+                <input type="text" name="name" placeholder="Название" required>
+                <select name="type">
+                    <option value="circle">Круг</option>
+                    <option value="square">Квадрат</option>
+                    <option value="triangle">Треугольник</option>
+                </select>
+                <select name="color_id" id="colorSelect"></select>
+                <button type="submit">Добавить фигуру</button>
+            </form>
+            <table id="shapesTable">
+                <tr><th>ID</th><th>Название</th><th>Тип</th><th>Цвет</th></tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API = '/api';
+        
+        async function loadStorages() {
+            const res = await fetch(`${API}/storages`);
+            const storages = await res.json();
+            const select = document.getElementById('storageSelect');
+            select.innerHTML = '<option value="">Хранилище по умолчанию</option>';
+            storages.forEach(s => {
+                select.innerHTML += `<option value="${s.name}">${s.name} (${s.path})</option>`;
+            });
+            loadBackups();
+        }
+        
+        async function loadBackups() {
+            const storage = document.getElementById('storageSelect').value;
+            const res = await fetch(`${API}/backups?storage=${storage}`);
+            const backups = await res.json();
+            const list = document.getElementById('backupList');
+            list.innerHTML = backups.map(b => `
+                <li>
+                    ${b.name}
+                    <button class="restore-btn" onclick="restoreBackup('${b.path}')">Восстановить</button>
+                    <button class="delete-btn" onclick="deleteBackup('${b.path}')">Удалить</button>
+                </li>
+            `).join('');
+        }
+        
+        async function createBackup() {
+            const storage = document.getElementById('storageSelect').value;
+            const formData = new FormData();
+            formData.append('storage', storage);
+            await fetch(`${API}/backup`, { method: 'POST', body: formData });
+            loadBackups();
+        }
+        
+        async function restoreBackup(path) {
+            await fetch(`${API}/restore`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path})
+            });
+            alert('Восстановление завершено');
+            location.reload();
+        }
+        
+        async function deleteBackup(path) {
+            await fetch(`${API}/backups`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path})
+            });
+            loadBackups();
+        }
+        
+        async function addStorage() {
+            const name = document.getElementById('newStorageName').value;
+            const path = document.getElementById('newStoragePath').value;
+            await fetch(`${API}/storages`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name, path})
+            });
+            loadStorages();
+        }
+        
+        async function loadColors() {
+            const res = await fetch(`${API}/colors`);
+            const colors = await res.json();
+            const table = document.getElementById('colorsTable');
+            table.innerHTML = '<tr><th>ID</th><th>Название</th><th>HEX</th><th>Фигуры</th></tr>';
+            colors.forEach(c => {
+                table.innerHTML += `<tr><td>${c.id}</td><td>${c.name}</td><td>${c.hex}</td><td>${c.shapes ? c.shapes.length : 0}</td></tr>`;
+            });
+            
+            const colorSelect = document.getElementById('colorSelect');
+            colorSelect.innerHTML = colors.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+        
+        async function loadShapes() {
+            const res = await fetch(`${API}/shapes`);
+            const shapes = await res.json();
+            const table = document.getElementById('shapesTable');
+            table.innerHTML = '<tr><th>ID</th><th>Название</th><th>Тип</th><th>Цвет</th></tr>';
+            shapes.forEach(s => {
+                table.innerHTML += `<tr><td>${s.id}</td><td>${s.name}</td><td>${s.type}</td><td>${s.color ? s.color.name : '-'}</td></tr>`;
+            });
+        }
+        
+        document.getElementById('colorForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            await fetch(`${API}/colors`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            loadColors();
+            e.target.reset();
+        };
+        
+        document.getElementById('shapeForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            data.color_id = parseInt(data.color_id);
+            await fetch(`${API}/shapes`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            loadShapes();
+            e.target.reset();
+        };
+        
+        loadStorages();
+        loadColors();
+        loadShapes();
+    </script>
+</body>
+</html>

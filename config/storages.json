@@ -1,0 +1,10 @@
+{
+  "default": {
+    "name": "default",
+    "path": "/app/dbBackup"
+  },
+  "koko": {
+    "name": "koko",
+    "path": "/home/vboxuser"
+  }
+}
